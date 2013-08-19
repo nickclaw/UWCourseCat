@@ -1,0 +1,5 @@
+cc_site:
+    resource: "@CCSiteBundle/Controller/"
+    type:     annotation
+    prefix:   /
+
