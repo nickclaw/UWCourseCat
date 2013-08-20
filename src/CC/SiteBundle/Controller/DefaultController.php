@@ -18,43 +18,54 @@ class DefaultController extends Controller
     {	
     	$em = $this->getDoctrine()->getManager();
 
-    	$doc = new \DOMDocument();
-    	$doc->formatOutput = true;
-    	$doc->load('https://ws.admin.washington.edu/student/v4/public/college.xml?year=&quarter=&future_terms=0&campus_short_name=seattle&page_start=1&page_size=20');
 
+        /****** GET CURRENT TERM ******/
+        $year = 2012;
+        $quarter = 'autumn';
+        $term = file_get_contents("https://ws.admin.washington.edu/student/v4/public/term/". $year .",". $quarter .".json");
+        $termData = json_decode($term);
 
-    	$colleges = $doc->getElementsByTagName('Colleges')->item(0);
-    	foreach($colleges->getElementsByTagName('College') as $college) {
-    		$abbreviation = $college->getElementsByTagName('CollegeAbbreviation')->item(0)->nodeValue;
-    		$fullName = $college->getElementsByTagName('CollegeFullNameTitleCased')->item(0)->nodeValue;
-    		$name = $college->getElementsByTagName('CollegeName')->item(0)->nodeValue;
-    		$shortName = $college->getElementsByTagName('CollegeShortName')->item(0)->nodeValue;
-    		$year = $college->getElementsByTagName('Year')->item(0)->nodeValue;
-    		$quarter = $college->getElementsByTagName('Quarter')->item(0)->nodeValue; 		
+        echo "Year: $year<br />";
+        echo "Quarter: $quarter<br />";
 
-    		$college = new College();
-    		$college->setAbbreviation($abbreviation)
-    			->setFullName($fullName)
-    			->setName($name)
-    			->setShortName($shortName)
-    			->setYear($year)
-    			->setQuarter($quarter);
-    		$em->persist($college);
+        /****** GET ALL CAMPUSES ******/
+    	$campuses = file_get_contents('https://ws.admin.washington.edu/student/v4/public/campus.json');
+    	$campusData = json_decode($campuses, false);
 
-    		echo $fullName."<br />";
+        // for each campus
+        foreach($campusData->Campuses as $campus) {
+            echo "&nbsp;&nbsp;&nbsp;&nbsp;".$campus->CampusName."<br />";
 
-    		$curDoc = new \DomDocument();
-    		$curDoc->formatOutput = true;
-    		$curDoc->load("https://ws.admin.washington.edu/student/v4/public/curriculum.xml?year=$year&quarter=$quarter&department_abbreviation=$abbreviation&sort_by=on");
-    		$curricula = $curDoc->getElementsByTagName('Curriculum');
+            /******* GET ALL COLLEGES ******/
+            $collegeText = file_get_contents("https://ws.admin.washington.edu/student/v4/public/college.json?campus_short_name=". $campus->CampusShortName);
+            $collegeData = json_decode($collegeText);
 
-    		foreach($curricula as $curriculum) {
-    			echo "    ". $curriculum->getElementsByTagName('CurriculumFullName')->item(0)->nodeValue."<br />";
-    		}
-    	}
-    	echo $curDoc->saveXml();
+            foreach($collegeData->Colleges as $college) {
+                echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".$college->CollegeName."<br />";
 
-    	$em->flush();
+                /******* GET ALL CURRICULA ******/
+                // $curText = file_get_contents("https://ws.admin.washington.edu/student/v4/public/curriculum.json".
+                //     "?year=". $year .
+                //     "&quarter=". $quarter .
+                //     "&department_abbreviation=". $college->CollegeAbbreviation . 
+                //     "&sort_by=on"
+                // );
+                $curText = ('https://ws.admin.washington.edu/student/v4/public/curriculum.json'.
+                    '?year='.$year.
+                    '&quarter='.$quarter.
+                    '&department_abbreviation='. $college->CollegeAbbreviation .
+                    '&sort_by=on'
+                );
+                
+                // $curData = json_decode($curText);
+                echo $curText."<br />";
+
+                // foreach($curData->Curricula as $curriculum) {
+                //     echo "&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;".$curriculum->CurriculumFullName."<br />";
+                // }
+            }
+
+        }
 
     	return array();
     }
