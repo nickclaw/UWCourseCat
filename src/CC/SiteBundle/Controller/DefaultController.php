@@ -20,6 +20,7 @@ class DefaultController extends Controller
      */
     public function indexAction()
     {   
+        echo 'Starting...<br />';
         $em = $this->getDoctrine()->getManager();
 
         /****** GET CURRENT TERM ******/
@@ -41,9 +42,9 @@ class DefaultController extends Controller
         $campuses = json_decode($campusesText, false);
 
         // for each campus
-//        echo "<a href='$campusUrl'>$campusUrl</a><br />";
+       echo "<a href='$campusUrl'>$campusUrl</a><br />";
         foreach($campuses->Campuses as $campus) {
-//            echo $campus->CampusName.'<br />';
+           echo $campus->CampusName.'<br />';
             // make a campus
             $ca = new Campus();
             $ca->setFullName($campus->CampusFullName)
@@ -58,9 +59,9 @@ class DefaultController extends Controller
             $collegeText = file_get_contents($collegeUrl);
             $colleges = json_decode($collegeText);
 
-//            echo "<a href='$collegeUrl'>$collegeUrl</a><br />";
+            echo "<a href='$collegeUrl'>$collegeUrl</a><br />";
             foreach($colleges->Colleges as $college) {
-//                echo "&nbsp;&nbsp;&nbsp;&nbsp;".$college->CollegeName.' - '.$college->CollegeAbbreviation.'<br />';
+               echo "&nbsp;&nbsp;&nbsp;&nbsp;".$college->CollegeName.' - '.$college->CollegeAbbreviation.'<br />';
                 $co = new College();
                 $co->setAbbreviation($college->CollegeAbbreviation)
                     ->setFullName($college->CollegeFullName)
@@ -78,9 +79,18 @@ class DefaultController extends Controller
                 $curText = file_get_contents($curUrl);
                 $curricula = json_decode($curText);
 
-//                echo "<a href='$curUrl'>$curUrl</a><br />";
-                foreach($curricula->Curricula as $curriculum) {
-//                    echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'.$curriculum->CurriculumName.' - '.$curriculum->CurriculumAbbreviation.'<br />';
+                $curUrl1 = 'https://ws.admin.washington.edu/student/v4/public/curriculum.json'.
+                    '?year='.$te->getYear().
+                    '&quarter='.$te->getQuarter().
+                    '&college_abbreviation='. urlencode($college->CollegeAbbreviation) .
+                    '&sort_by=on';
+                $curText1 = file_get_contents($curUrl1);
+                $curricula1 = json_decode($curText1);
+
+               echo "<a href='$curUrl'>$curUrl</a><br />";
+                $curricula2 = $this->mergeCurriculum($curricula->Curricula, $curricula1->Curricula);
+                foreach($curricula2 as $curriculum) {
+                   echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'.$curriculum->CurriculumName.' - '.$curriculum->CurriculumAbbreviation.'<br />';
                     $cu = new Curriculum();
                     $cu->setAbbreviation($curriculum->CurriculumAbbreviation)
                         ->setFullName($curriculum->CurriculumFullName)
@@ -97,6 +107,7 @@ class DefaultController extends Controller
                     $courses = json_decode($courseText);
 
                     foreach($courses->Courses as $course) {
+                        echo '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'.$course->CourseNumber.'<br />';
                         $crs = new Course();
                         $crs->setNumber($course->CourseNumber)
                             ->setTitle($course->CourseTitle)
@@ -107,8 +118,24 @@ class DefaultController extends Controller
                 }
             }
         }
-        $em->flush();
 
+        $em->flush();
         return array();
+    }
+
+    public function mergeCurriculum($a, $b) {
+        foreach($a as $aa) {
+            $unique = true;
+            foreach($b as $bb) {
+                if ($bb->CurriculumAbbreviation === $aa->CurriculumAbbreviation) {
+                    $unique = false;
+                    break;
+                }
+            }
+            if ($unique) {
+                $b[0] = $aa;
+            }
+        }
+        return $b;
     }
 }
