@@ -7,3 +7,9 @@
 composer.phar
 
 .DS_Store
+
+*.php~
+
+*.php~
+
+*.php~

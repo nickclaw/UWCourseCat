@@ -50,18 +50,15 @@ class College
     private $shortName;
 
     /**
-     * @var integer
-     *
-     * @ORM\Column(name="year", type="integer")
-     */
-    private $year;
+     * @ORM\ManyToOne(targetEntity="Campus", inversedBy="colleges")
+     * @ORM\JoinColumn(name="campus_id", referencedColumnName="id", onDelete="CASCADE")
+     **/
+    private $campus;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="quarter", type="string", length=255)
-     */
-    private $quarter;
+     * @ORM\OneToMany(targetEntity="Curriculum", mappedBy="college")
+     **/
+    private $curricula;
 
 
     /**
@@ -210,5 +207,68 @@ class College
     public function getQuarter()
     {
         return $this->quarter;
+    }
+
+    /**
+     * Set campus
+     *
+     * @param \CC\DataBundle\Entity\Campus $campus
+     * @return College
+     */
+    public function setCampus(\CC\DataBundle\Entity\Campus $campus = null)
+    {
+        $this->campus = $campus;
+    
+        return $this;
+    }
+
+    /**
+     * Get campus
+     *
+     * @return \CC\DataBundle\Entity\Campus 
+     */
+    public function getCampus()
+    {
+        return $this->campus;
+    }
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        $this->curricula = new \Doctrine\Common\Collections\ArrayCollection();
+    }
+    
+    /**
+     * Add curricula
+     *
+     * @param \CC\DataBundle\Entity\Curriculum $curricula
+     * @return College
+     */
+    public function addCurricula(\CC\DataBundle\Entity\Curriculum $curricula)
+    {
+        $this->curricula[] = $curricula;
+    
+        return $this;
+    }
+
+    /**
+     * Remove curricula
+     *
+     * @param \CC\DataBundle\Entity\Curriculum $curricula
+     */
+    public function removeCurricula(\CC\DataBundle\Entity\Curriculum $curricula)
+    {
+        $this->curricula->removeElement($curricula);
+    }
+
+    /**
+     * Get curricula
+     *
+     * @return \Doctrine\Common\Collections\Collection 
+     */
+    public function getCurricula()
+    {
+        return $this->curricula;
     }
 }
