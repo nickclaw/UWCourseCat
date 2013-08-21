@@ -22,12 +22,13 @@ class Course
     private $number;
 
     /**
-     * @ORM\ManyToOne(targetEntity="Curriculum", inversedBy="courses")
-     * @ORM\JoinColumn(name="curriculum_abbr", referencedColumnName="abbreviation", onDelete="CASCADE")
+     * @var string
+     *
+     * @ORM\Column(name="abbreviation", type="string", length=255)
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="NONE")
-     **/
-    private $curriculum;
+     */
+    private $curAbbreviation;
 
     /**
      * @var string
@@ -42,6 +43,12 @@ class Course
      * @ORM\Column(name="longTitle", type="string", length=255)
      */
     private $longTitle;
+
+    /**
+     * @ORM\ManyToOne(targetEntity="Curriculum", inversedBy="courses")
+     * @ORM\JoinColumn(name="curriculum_abbr", referencedColumnName="abbreviation", onDelete="CASCADE")
+     **/
+    private $curriculum;
 
     /**
      * @var string
@@ -184,6 +191,7 @@ class Course
     public function setCurriculum(\CC\DataBundle\Entity\Curriculum $curriculum = null)
     {
         $this->curriculum = $curriculum;
+        $this->curAbbreviation = $curriculum->getAbbreviation();
     
         return $this;
     }
@@ -357,5 +365,28 @@ class Course
     public function getGenEd()
     {
         return $this->genEd;
+    }
+
+    /**
+     * Set curAbbreviation
+     *
+     * @param string $curAbbreviation
+     * @return Course
+     */
+    public function setCurAbbreviation($curAbbreviation)
+    {
+        $this->curAbbreviation = $curAbbreviation;
+    
+        return $this;
+    }
+
+    /**
+     * Get curAbbreviation
+     *
+     * @return string 
+     */
+    public function getCurAbbreviation()
+    {
+        return $this->curAbbreviation;
     }
 }

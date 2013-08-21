@@ -179,7 +179,7 @@ class GetCommand extends ContainerAwareCommand
                 '&curriculum_abbreviation='.rawurlencode($curriculum->getAbbreviation()).
                 '&page_size=400';
             $data = $this->getJsonObject($url);
-            $courseChunks = array_chunk($data->Courses, 50);
+            $courseChunks = array_chunk($data->Courses, 20);
             foreach($courseChunks as $courseChunk) {
                 $urlArray = [];
                 foreach($courseChunk as $chunk) {
@@ -233,6 +233,10 @@ class GetCommand extends ContainerAwareCommand
     }
 
     private function getJsonObjects(array $urls) {
+        echo "Getting ".count($urls)." urls:\n";
+        // echo "    ".$urls[0]."\n";
+        // echo "through....\n";
+        // echo "    ".end($urls)."\n";
         $mHandle = curl_multi_init();
         $handles = [];
         foreach($urls as $url) {
@@ -241,7 +245,8 @@ class GetCommand extends ContainerAwareCommand
 
         $running = null;
         do {
-            curl_multi_exec($mHandle, $running);
+            usleep(200000);
+            $mrc = curl_multi_exec($mHandle, $running);
         } while($running > 0);
 
         $returner = [];

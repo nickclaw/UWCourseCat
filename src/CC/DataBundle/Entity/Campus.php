@@ -91,19 +91,6 @@ class Campus
     }
 
     /**
-     * Set fullName
-     *
-     * @param string $fullName
-     * @return Campus
-     */
-    public function setFulLName($fullName)
-    {
-        $this->fullName = $fullName;
-    
-        return $this;
-    }
-
-    /**
      * Set name
      *
      * @param string $name
@@ -180,5 +167,18 @@ class Campus
     public function getTerm()
     {
         return $this->term;
+    }
+
+    /**
+     * Set fullName
+     *
+     * @param string $fullName
+     * @return Campus
+     */
+    public function setFullName($fullName)
+    {
+        $this->fullName = $fullName;
+    
+        return $this;
     }
 }
