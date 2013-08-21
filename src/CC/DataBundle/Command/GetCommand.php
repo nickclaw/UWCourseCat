@@ -142,27 +142,13 @@ class GetCommand extends ContainerAwareCommand
                     '&quarter='.$quarter.
                     '&department_abbreviation='. rawurlencode($college->getAbbreviation()) .
                     '&sort_by=on';
-                $handle1 = curl_init($url1);
-                curl_setopt($handle1, CURLOPT_RETURNTRANSFER, true);
-            curl_multi_add_handle($mHandle, $handle1);
                 $url2 = 'https://ws.admin.washington.edu/student/v4/public/curriculum.json'.
                     '?year='.$year.
                     '&quarter='.$quarter.
                     '&college_abbreviation='. rawurlencode($college->getAbbreviation()) .
                     '&sort_by=on';
-                $handle2 = curl_init($url2);
-                curl_setopt($handle2, CURLOPT_RETURNTRANSFER, true);
-            curl_multi_add_handle($mHandle, $handle2);
-
-            $running = null;
-            do {
-                $msg = curl_multi_exec($mHandle, $running);
-            } while ($running > 0);
-
-            $json1 = curl_multi_getcontent($handle1);
-            $json2 = curl_multi_getcontent($handle2);
-
-            $curricula = $this->mergeCurriculum(json_decode($json1)->Curricula, json_decode($json2)->Curricula);
+            $dataArray = $this->getJsonObjects(array($url1, $url2));
+            $curricula = $this->mergeCurriculum($dataArray[0]->Curricula, $dataArray[1]->Curricula);
 
             foreach($curricula as $curriculum) {
                 $cu = new Curriculum();
@@ -179,25 +165,94 @@ class GetCommand extends ContainerAwareCommand
     }
 
     private function getCourses($year, $quarter, $em, $parents) {
-        echo "course\n";
+        if (!$parents) {
+            $repo = $em->getRepository('CCDataBundle:Curriculum');
+            $parents = $repo->findBy(array());
+        }
+
+        $courses = [];
+        foreach($parents as $curriculum) {
+            $url = 'https://ws.admin.washington.edu/student/v4/public/course.json'.
+                '?year='.$year.
+                '&quarter='.$quarter.
+                '&future_terms=0'.
+                '&curriculum_abbreviation='.rawurlencode($curriculum->getAbbreviation()).
+                '&page_size=400';
+            $data = $this->getJsonObject($url);
+            $courseChunks = array_chunk($data->Courses, 50);
+            foreach($courseChunks as $courseChunk) {
+                $urlArray = [];
+                foreach($courseChunk as $chunk) {
+                    $courseUrl = 'https://ws.admin.washington.edu/student/v4/public/course/'.
+                        $year.','.
+                        $quarter.','.
+                        rawurlencode($curriculum->getAbbreviation()).','.
+                        $chunk->CourseNumber.'.json';
+                    $urlArray[] = $courseUrl;
+                }
+                $result = $this->getJsonObjects($urlArray);
+
+                foreach($result as $course) {
+                    $crs = new Course();
+                    $crs->setNumber($course->CourseNumber)
+                        ->setTitle($course->CourseTitle)
+                        ->setLongTitle($course->CourseTitleLong)
+                        ->setCurriculum($curriculum)
+                        ->setDescription($course->CourseDescription)
+                        ->setCreditControl($course->CreditControl)
+                        ->setGradingSystem($course->GradingSystem)
+                        ->setMaxCredits($course->MaximumCredit)
+                        ->setMaxTermCredits($course->MaximumTermCredit)
+                        ->setMinTermCredits($course->MinimumTermCredit)
+                        ->setGenEd($course->GeneralEducationRequirements);
+                    $em->persist($crs);
+
+                    $courses[] = $crs;
+                }
+            }
+            $em->flush();
+        }
     }
 
     private function getSections($year, $quarter, $em, $parents) {
         echo "section\n";
     }
 
-    private function getJsonObject($url) {
+    private function getJsonObject($url, $returnHandle = false) {
         $handle = curl_init($url);
         curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($handle, CURLOPT_NOPROGRESS, false);
+        // curl_setopt($handle, CURLOPT_NOPROGRESS, false);
         curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 20);
-        $json = curl_exec($handle);
-        $data = json_decode($json);
-        return $data;
+        if ($returnHandle) {
+            return $handle;
+        } else {
+            $json = curl_exec($handle);
+            $data = json_decode($json);
+            return $data;
+        }
     }
 
     private function getJsonObjects(array $urls) {
+        $mHandle = curl_multi_init();
+        $handles = [];
+        foreach($urls as $url) {
+            curl_multi_add_handle($mHandle, $handles[] = $this->getJsonObject($url, true));
+        }
 
+        $running = null;
+        do {
+            curl_multi_exec($mHandle, $running);
+        } while($running > 0);
+
+        $returner = [];
+        foreach($handles as $handle) {
+            $returner[] = json_decode(curl_multi_getcontent($handle));
+            curl_multi_remove_handle($mHandle, $handle);
+            curl_close($handle);
+        }
+        curl_multi_close($mHandle);
+
+        return $returner;
     }
 
     private function mergeCurriculum($a, $b) {
