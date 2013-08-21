@@ -64,27 +64,90 @@ class GetCommand extends ContainerAwareCommand
         $em->flush();
     }
 
-    private function getTerm($year, $quarter, $em, $parent) {
+    private function getTerm($year, $quarter, $em, $parents) {
         echo "Getting Term...\n";
+        $url = 'https://ws.admin.washington.edu/student/v4/public/term/'.
+            $year.','.
+            $quarter.'.json';
+
+        $handle = curl_init($url);
+        curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+        $json = curl_exec($handle);
+        $data = json_decode($json);
+        
+        $term = new Term();
+        $term->setYear($year)
+            ->setQuarter($quarter);
+        $em->persist($term);
+
+        return $term;
     }
 
     private function getCampuses($year, $quarter, $em, $parent) {
-        echo "campus\n";
+        if (!$parent) {
+            $repo = $em->getRepository('CCDataBundle:Term');
+            $parent = $repo->findOneBy(array('year' => $year, 'quarter' => $quarter));
+        }
+
+        $url = 'https://ws.admin.washington.edu/student/v4/public/campus.json';
+        $handle = curl_init($url);
+        curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+        $json = curl_exec($handle);
+        $data = json_decode($json);
+
+        $campuses = [];
+        foreach($data->Campuses as $campus) {
+            $ca = new Campus();
+            $ca->setFullName($campus->CampusFullName)
+                ->setName($campus->CampusName)
+                ->setShortName($campus->CampusShortName)
+                ->setTerm($parent);
+            $em->persist($ca);
+            $campuses[] = $ca;
+        }
+        $em->flush();
+        return $campuses;
     }
 
-    private function getColleges($year, $quarter, $em, $parent) {
-        echo "college\n";
+    private function getColleges($year, $quarter, $em, $parents) {
+        if (!$parents) {
+            $repo = $em->getRepository('CCDataBundle:Campus');
+            $parents = $repo->findBy(array());
+        }
+
+        $colleges = [];
+        foreach($parents as $campus) {
+            $url = 'https://ws.admin.washington.edu/student/v4/public/college.json'.
+                '?campus_short_name='. $campus->getShortName();
+            $handle = curl_init($url);
+            curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+            $json = curl_exec($handle);
+            $data = json_decode($json);
+
+            foreach($data->Colleges as $college) {
+                $co = new College();
+                $co->setAbbreviation($college->CollegeAbbreviation)
+                    ->setFullName($college->CollegeFullName)
+                    ->setName($college->CollegeName)
+                    ->setShortName($college->CollegeShortName)
+                    ->setCampus($campus);
+                $em->persist($co);
+                $colleges[] = $co;
+            }
+        }
+        $em->flush();
+        return $colleges;
     }
 
-    private function getCurricula($year, $quarter, $em, $parent) {
+    private function getCurricula($year, $quarter, $em, $parents) {
         echo "curriculum\n";;
     }
 
-    private function getCourses($year, $quarter, $em, $parent) {
+    private function getCourses($year, $quarter, $em, $parents) {
         echo "course\n";
     }
 
-    private function getSections($year, $quarter, $em, $parent) {
+    private function getSections($year, $quarter, $em, $parents) {
         echo "section\n";
     }
 
