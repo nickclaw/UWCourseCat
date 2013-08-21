@@ -73,7 +73,7 @@ class GetCommand extends ContainerAwareCommand
         $term = new Term();
         $term->setYear($year)
             ->setQuarter($quarter);
-        $em->persist($term);
+        $em->merge($term);
 
         return $term;
     }
@@ -94,7 +94,7 @@ class GetCommand extends ContainerAwareCommand
                 ->setName($campus->CampusName)
                 ->setShortName($campus->CampusShortName)
                 ->setTerm($parent);
-            $em->persist($ca);
+            $em->merge($ca);
             $campuses[] = $ca;
         }
         $em->flush();
@@ -120,7 +120,7 @@ class GetCommand extends ContainerAwareCommand
                     ->setName($college->CollegeName)
                     ->setShortName($college->CollegeShortName)
                     ->setCampus($campus);
-                $em->persist($co);
+                $em->merge($co);
                 $colleges[] = $co;
             }
         }
@@ -156,7 +156,7 @@ class GetCommand extends ContainerAwareCommand
                     ->setFullName($curriculum->CurriculumFullName)
                     ->setName($curriculum->CurriculumName)
                     ->setCollege($college);
-                $em->persist($cu);
+                $em->merge($cu);
                 $returner[] = $cu;
             }
         }
@@ -205,7 +205,7 @@ class GetCommand extends ContainerAwareCommand
                         ->setMaxTermCredits($course->MaximumTermCredit)
                         ->setMinTermCredits($course->MinimumTermCredit)
                         ->setGenEd($course->GeneralEducationRequirements);
-                    $em->persist($crs);
+                    $em->merge($crs);
 
                     $courses[] = $crs;
                 }

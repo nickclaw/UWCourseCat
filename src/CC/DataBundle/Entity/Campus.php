@@ -13,13 +13,13 @@ use Doctrine\ORM\Mapping as ORM;
 class Campus
 {
     /**
-     * @var integer
+     * @var string
      *
-     * @ORM\Column(name="id", type="integer")
      * @ORM\Id
-     * @ORM\GeneratedValue(strategy="AUTO")
+     * @ORM\Column(name="shortName", type="string", length=255)
+     * @ORM\GeneratedValue(strategy="NONE")
      */
-    private $id;
+    private $shortName;
 
     /**
      * @var string
@@ -36,15 +36,11 @@ class Campus
     private $name;
 
     /**
-     * @var string
-     *
-     * @ORM\Column(name="shortName", type="string", length=255)
-     */
-    private $shortName;
-
-    /**
      * @ORM\ManyToOne(targetEntity="Term", inversedBy="campuses")
-     * @ORM\JoinColumn(name="term_id", referencedColumnName="id", onDelete="CASCADE")
+     * @ORM\JoinColumns({
+     *      @ORM\JoinColumn(name="term_year", referencedColumnName="year", onDelete="CASCADE"),
+     *      @ORM\JoinColumn(name="term_quarter", referencedColumnName="quarter", onDelete="CASCADE")
+     * });
      **/
     private $term;
 
@@ -53,61 +49,12 @@ class Campus
      **/
     private $colleges;
 
-
     /**
-     * Get id
-     *
-     * @return integer 
+     * Constructor
      */
-    public function getId()
+    public function __construct()
     {
-        return $this->id;
-    }
-
-    /**
-     * Set fullName
-     *
-     * @param string $fullName
-     * @return Campus
-     */
-    public function setFullName($fullName)
-    {
-        $this->fullName = $fullName;
-    
-        return $this;
-    }
-
-    /**
-     * Get fullName
-     *
-     * @return string 
-     */
-    public function getFullName()
-    {
-        return $this->fullName;
-    }
-
-    /**
-     * Set name
-     *
-     * @param string $name
-     * @return Campus
-     */
-    public function setName($name)
-    {
-        $this->name = $name;
-    
-        return $this;
-    }
-
-    /**
-     * Get name
-     *
-     * @return string 
-     */
-    public function getName()
-    {
-        return $this->name;
+        $this->colleges = new \Doctrine\Common\Collections\ArrayCollection();
     }
 
     /**
@@ -132,12 +79,51 @@ class Campus
     {
         return $this->shortName;
     }
+
     /**
-     * Constructor
+     * Get fullName
+     *
+     * @return string 
      */
-    public function __construct()
+    public function getFullName()
     {
-        $this->colleges = new \Doctrine\Common\Collections\ArrayCollection();
+        return $this->fullName;
+    }
+
+    /**
+     * Set fullName
+     *
+     * @param string $fullName
+     * @return Campus
+     */
+    public function setFulLName($fullName)
+    {
+        $this->fullName = $fullName;
+    
+        return $this;
+    }
+
+    /**
+     * Set name
+     *
+     * @param string $name
+     * @return Campus
+     */
+    public function setName($name)
+    {
+        $this->name = $name;
+    
+        return $this;
+    }
+
+    /**
+     * Get name
+     *
+     * @return string 
+     */
+    public function getName()
+    {
+        return $this->name;
     }
     
     /**
