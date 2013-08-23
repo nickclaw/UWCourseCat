@@ -245,7 +245,7 @@ class GetCommand extends ContainerAwareCommand
 
         $running = null;
         do {
-            usleep(200000);
+            usleep(20000);
             $mrc = curl_multi_exec($mHandle, $running);
         } while($running > 0);
 

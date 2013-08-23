@@ -13,9 +13,9 @@ use Doctrine\ORM\Mapping as ORM;
 class Course
 {
     /**
-     * @var string
+     * @var integer
      *
-     * @ORM\Column(name="number", type="string", length=255)
+     * @ORM\Column(name="number", type="integer")
      * @ORM\Id
      * @ORM\GeneratedValue(strategy="NONE")
      */
@@ -116,7 +116,7 @@ class Course
     /**
      * Set number
      *
-     * @param string $number
+     * @param integer $number
      * @return Course
      */
     public function setNumber($number)
@@ -129,7 +129,7 @@ class Course
     /**
      * Get number
      *
-     * @return string 
+     * @return integer 
      */
     public function getNumber()
     {
