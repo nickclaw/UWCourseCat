@@ -23,7 +23,8 @@ class GetCommand extends ContainerAwareCommand
             ->setDescription('Greet someone')
             ->addArgument('year', InputArgument::REQUIRED, 'Term year to search from.')
             ->addArgument('quarter', InputArgument::REQUIRED, 'Term quarter to search from.')
-            ->addArgument('level', InputArgument::OPTIONAL, 'term campus college curriculum course section ')
+            ->addArgument('from', InputArgument::OPTIONAL, 'term campus college curriculum course section ')
+            ->addArgument('to', InputArgument::OPTIONAL, 'term campus college curriculum course section')
         ;
     }
 
@@ -31,94 +32,86 @@ class GetCommand extends ContainerAwareCommand
     {
         $year = $input->getArgument('year');
         $quarter = $input->getArgument('quarter');
-        $level = $input->getArgument('level');
-        if (!$level){
-            $level = 'term';
-        }
+        $from = $input->hasArgument('from')?$input->getArgument('from'):'term';
+        $to = $input->hasArgument('to')?$input->getArgument('to'):'section';
+
 
         $em = $this->getContainer()->get('doctrine')->getManager();
 
-        $term = null;
-        $campuses = null;
-        $colleges = null;
-        $curricula = null;
-        $courses = null;
-        $sections = null;
+        $returnedLast = null;
 
-        switch($level) {
+        switch ($from) {
             case 'term':
-                $output->writeln('Getting term...');
-                $term = $this->getTerm($year, $quarter, $em);
+                $returnedLast = $this->getTerm($year, $quarter, $em, $returnedLast);
+                if ($to === 'term') break;
             case 'campus':
-                $output->writeln('Getting campuses...');
-                $campuses = $this->getCampuses($year, $quarter, $em, $term);
+                $returnedLast = $this->getCampuses($year, $quarter, $em, $returnedLast);
+                if ($to === 'campus') break;
             case 'college':
-                $output->writeln('Getting colleges...');
-                $colleges = $this->getColleges($year, $quarter, $em, $campuses);
+                $returnedLast = $this->getColleges($year, $quarter, $em, $returnedLast);
+                if ($to === 'college') break;
             case 'curriculum':
-                $output->writeln('Getting curricula...');
-                $curricula = $this->getCurricula($year, $quarter, $em, $colleges);
+                $returnedLast = $this->getCurricula($year, $quarter, $em, $returnedLast);
+                if ($to === 'curriculum') break;
             case 'course':
-                $output->writeln('Getting courses...');
-                $this->getCourses($year, $quarter, $em, $curricula);
+                $returnedLast = $this->getCourses($year, $quarter, $em, $returnedLast);
+                if ($to === 'course') break;
             case 'section':
-                $output->writeln('Getting sections...');
+                $returnedLast = $this->getSections($year, $quarter, $em, $returnedLast);
+                if ($to === 'section') break;
         }
+        
         $em->flush();
     }
 
-    private function getTerm($year, $quarter, $em) {
-        $url = "https://ws.admin.washington.edu/student/v4/public/term/". $year .",". $quarter .".json";
-        // echo "<a href='$url'>$url</a><br />";
-        $json = file_get_contents($url);
-        $data = json_decode($json);
-
+    private function getTerm($year, $quarter, $em, $parents) {
+        $url = 'https://ws.admin.washington.edu/student/v4/public/term/'.
+            $year.','.
+            $quarter.'.json';
+        $data = $this->getJsonObject($url);
+        
         $term = new Term();
         $term->setYear($year)
             ->setQuarter($quarter);
-        $em->persist($term);
+        $em->merge($term);
 
         return $term;
     }
 
-    private function getCampuses($year, $quarter, $em, $term = null) {
-        if (!$term) {
+    private function getCampuses($year, $quarter, $em, $parent) {
+        if (!$parent) {
             $repo = $em->getRepository('CCDataBundle:Term');
-            $term = $repo->findOneBy(array('year' => $year, 'quarter' => $quarter));
+            $parent = $repo->findOneBy(array('year' => $year, 'quarter' => $quarter));
         }
 
         $url = 'https://ws.admin.washington.edu/student/v4/public/campus.json';
-        // echo "<a href='$url'>$url</a><br />";
-        $json = file_get_contents($url);
-        $data = json_decode($json);
+        $data = $this->getJsonObject($url);
 
         $campuses = [];
         foreach($data->Campuses as $campus) {
-            // make a campus
             $ca = new Campus();
             $ca->setFullName($campus->CampusFullName)
                 ->setName($campus->CampusName)
                 ->setShortName($campus->CampusShortName)
-                ->setTerm($term);
-            $em->persist($ca);
+                ->setTerm($parent);
+            $em->merge($ca);
             $campuses[] = $ca;
         }
-
+        $em->flush();
         return $campuses;
     }
 
-    private function getColleges($year, $quarter, $em, array $campuses = null) {
-        if (!$campuses) {
+    private function getColleges($year, $quarter, $em, $parents) {
+        if (!$parents) {
             $repo = $em->getRepository('CCDataBundle:Campus');
-            $campuses = $repo->findBy(array());
+            $parents = $repo->findBy(array());
         }
+
         $colleges = [];
-        foreach($campuses as $campus) {
+        foreach($parents as $campus) {
             $url = 'https://ws.admin.washington.edu/student/v4/public/college.json'.
                 '?campus_short_name='. $campus->getShortName();
-            // echo "<a href='$url'>$url</a><br />";
-            $json = file_get_contents($url);
-            $data = json_decode($json);
+            $data = $this->getJsonObject($url);
 
             foreach($data->Colleges as $college) {
                 $co = new College();
@@ -127,40 +120,35 @@ class GetCommand extends ContainerAwareCommand
                     ->setName($college->CollegeName)
                     ->setShortName($college->CollegeShortName)
                     ->setCampus($campus);
-                $em->persist($co);
+                $em->merge($co);
                 $colleges[] = $co;
             }
         }
-
+        $em->flush();
         return $colleges;
     }
 
-    private function getCurricula($year, $quarter, $em, array $colleges = null) {
-        if (!$colleges) {
+    private function getCurricula($year, $quarter, $em, $parents) {
+        if (!$parents) {
             $repo = $em->getRepository('CCDataBundle:College');
-            $colleges = $repo->findBy(array());
+            $parents = $repo->findBy(array());
         }
 
         $returner = [];
-        foreach ($colleges as $college) {
-            $url = 'https://ws.admin.washington.edu/student/v4/public/curriculum.json'.
-                '?year='.$college->getCampus()->getTerm()->getYear().
-                '&quarter='.$college->getCampus()->getTerm()->getQuarter().
-                '&department_abbreviation='. rawurlencode($college->getAbbreviation()) .
-                '&sort_by=on';
-            // echo "<a href='$url'>$url</a><br />";
-            $json = file_get_contents($url);
-            $part1 = json_decode($json);
-
-            $url = 'https://ws.admin.washington.edu/student/v4/public/curriculum.json'.
-                '?year='.$college->getCampus()->getTerm()->getYear().
-                '&quarter='.$college->getCampus()->getTerm()->getQuarter().
-                '&college_abbreviation='. rawurlencode($college->getAbbreviation()) .
-                '&sort_by=on';
-            $json = file_get_contents($url);
-            $part2 = json_decode($json);
-
-            $curricula = $this->mergeCurriculum($part1->Curricula, $part2->Curricula);
+        foreach($parents as $college) {
+            $mHandle = curl_multi_init();
+                $url1 = 'https://ws.admin.washington.edu/student/v4/public/curriculum.json'.
+                    '?year='.$year.
+                    '&quarter='.$quarter.
+                    '&department_abbreviation='. rawurlencode($college->getAbbreviation()) .
+                    '&sort_by=on';
+                $url2 = 'https://ws.admin.washington.edu/student/v4/public/curriculum.json'.
+                    '?year='.$year.
+                    '&quarter='.$quarter.
+                    '&college_abbreviation='. rawurlencode($college->getAbbreviation()) .
+                    '&sort_by=on';
+            $dataArray = $this->getJsonObjects(array($url1, $url2));
+            $curricula = $this->mergeCurriculum($dataArray[0]->Curricula, $dataArray[1]->Curricula);
 
             foreach($curricula as $curriculum) {
                 $cu = new Curriculum();
@@ -168,42 +156,43 @@ class GetCommand extends ContainerAwareCommand
                     ->setFullName($curriculum->CurriculumFullName)
                     ->setName($curriculum->CurriculumName)
                     ->setCollege($college);
-                $em->persist($cu);
+                $em->merge($cu);
                 $returner[] = $cu;
             }
         }
+        $em->flush();
         return $returner;
     }
 
-    private function getCourses($year, $quarter, $em, $curricula) {
-        if (!$curricula) {
+    private function getCourses($year, $quarter, $em, $parents) {
+        if (!$parents) {
             $repo = $em->getRepository('CCDataBundle:Curriculum');
-            $curricula = $repo->findBy(array());
+            $parents = $repo->findBy(array());
         }
 
         $courses = [];
-        foreach($curricula as $curriculum) {
+        foreach($parents as $curriculum) {
             $url = 'https://ws.admin.washington.edu/student/v4/public/course.json'.
-                    '?year='.$curriculum->getCollege()->getCampus()->getTerm()->getYear().
-                    '&quarter='.$curriculum->getCollege()->getCampus()->getTerm()->getQuarter().
-                    '&future_terms=0'.
-                    '&curriculum_abbreviation='.rawurlencode($curriculum->getAbbreviation()).
-                    '&page_size=50';
-            do {
-                echo $url."\n";
-                $json = file_get_contents($url);
-                $data = json_decode($json);
-
-                foreach($data->Courses as $course) {
+                '?year='.$year.
+                '&quarter='.$quarter.
+                '&future_terms=0'.
+                '&curriculum_abbreviation='.rawurlencode($curriculum->getAbbreviation()).
+                '&page_size=400';
+            $data = $this->getJsonObject($url);
+            $courseChunks = array_chunk($data->Courses, 20);
+            foreach($courseChunks as $courseChunk) {
+                $urlArray = [];
+                foreach($courseChunk as $chunk) {
                     $courseUrl = 'https://ws.admin.washington.edu/student/v4/public/course/'.
-                        $curriculum->getCollege()->getCampus()->getTerm()->getYear().','.
-                        $curriculum->getCollege()->getCampus()->getTerm()->getQuarter().','.
+                        $year.','.
+                        $quarter.','.
                         rawurlencode($curriculum->getAbbreviation()).','.
-                        $course->CourseNumber.'.json';
-                    echo "    ".$courseUrl."\n";
-                    $courseJson = file_get_contents($courseUrl);
-                    $course = json_decode($courseJson);
+                        $chunk->CourseNumber.'.json';
+                    $urlArray[] = $courseUrl;
+                }
+                $result = $this->getJsonObjects($urlArray);
 
+                foreach($result as $course) {
                     $crs = new Course();
                     $crs->setNumber($course->CourseNumber)
                         ->setTitle($course->CourseTitle)
@@ -216,22 +205,60 @@ class GetCommand extends ContainerAwareCommand
                         ->setMaxTermCredits($course->MaximumTermCredit)
                         ->setMinTermCredits($course->MinimumTermCredit)
                         ->setGenEd($course->GeneralEducationRequirements);
-                    $em->persist($crs);
+                    $em->merge($crs);
 
-                    $courses[] = $course;
+                    $courses[] = $crs;
                 }
-                if ($data->Next !== null) {
-                    $url = 'https://ws.admin.washington.edu'.$data->Next->Href;
-                } else {
-                    $url = null;
-                }
-            } while ($url !== null);
+            }
+            $em->flush();
         }
-        return $courses;
     }
 
+    private function getSections($year, $quarter, $em, $parents) {
+        echo "section\n";
+    }
 
+    private function getJsonObject($url, $returnHandle = false) {
+        $handle = curl_init($url);
+        curl_setopt($handle, CURLOPT_RETURNTRANSFER, true);
+        // curl_setopt($handle, CURLOPT_NOPROGRESS, false);
+        curl_setopt($handle, CURLOPT_CONNECTTIMEOUT, 20);
+        if ($returnHandle) {
+            return $handle;
+        } else {
+            $json = curl_exec($handle);
+            $data = json_decode($json);
+            return $data;
+        }
+    }
 
+    private function getJsonObjects(array $urls) {
+        echo "Getting ".count($urls)." urls:\n";
+        // echo "    ".$urls[0]."\n";
+        // echo "through....\n";
+        // echo "    ".end($urls)."\n";
+        $mHandle = curl_multi_init();
+        $handles = [];
+        foreach($urls as $url) {
+            curl_multi_add_handle($mHandle, $handles[] = $this->getJsonObject($url, true));
+        }
+
+        $running = null;
+        do {
+            usleep(20000);
+            $mrc = curl_multi_exec($mHandle, $running);
+        } while($running > 0);
+
+        $returner = [];
+        foreach($handles as $handle) {
+            $returner[] = json_decode(curl_multi_getcontent($handle));
+            curl_multi_remove_handle($mHandle, $handle);
+            curl_close($handle);
+        }
+        curl_multi_close($mHandle);
+
+        return $returner;
+    }
 
     private function mergeCurriculum($a, $b) {
         foreach($a as $aa) {

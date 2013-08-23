@@ -15,18 +15,20 @@ class Course
     /**
      * @var integer
      *
-     * @ORM\Column(name="id", type="integer")
+     * @ORM\Column(name="number", type="integer")
      * @ORM\Id
-     * @ORM\GeneratedValue(strategy="AUTO")
+     * @ORM\GeneratedValue(strategy="NONE")
      */
-    private $id;
+    private $number;
 
     /**
      * @var string
      *
-     * @ORM\Column(name="number", type="string", length=255)
+     * @ORM\Column(name="abbreviation", type="string", length=255)
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="NONE")
      */
-    private $number;
+    private $curAbbreviation;
 
     /**
      * @var string
@@ -44,7 +46,7 @@ class Course
 
     /**
      * @ORM\ManyToOne(targetEntity="Curriculum", inversedBy="courses")
-     * @ORM\JoinColumn(name="curriculum_id", referencedColumnName="id", onDelete="CASCADE")
+     * @ORM\JoinColumn(name="curriculum_abbr", referencedColumnName="abbreviation", onDelete="CASCADE")
      **/
     private $curriculum;
 
@@ -114,7 +116,7 @@ class Course
     /**
      * Set number
      *
-     * @param string $number
+     * @param integer $number
      * @return Course
      */
     public function setNumber($number)
@@ -127,7 +129,7 @@ class Course
     /**
      * Get number
      *
-     * @return string 
+     * @return integer 
      */
     public function getNumber()
     {
@@ -189,6 +191,7 @@ class Course
     public function setCurriculum(\CC\DataBundle\Entity\Curriculum $curriculum = null)
     {
         $this->curriculum = $curriculum;
+        $this->curAbbreviation = $curriculum->getAbbreviation();
     
         return $this;
     }
@@ -362,5 +365,28 @@ class Course
     public function getGenEd()
     {
         return $this->genEd;
+    }
+
+    /**
+     * Set curAbbreviation
+     *
+     * @param string $curAbbreviation
+     * @return Course
+     */
+    public function setCurAbbreviation($curAbbreviation)
+    {
+        $this->curAbbreviation = $curAbbreviation;
+    
+        return $this;
+    }
+
+    /**
+     * Get curAbbreviation
+     *
+     * @return string 
+     */
+    public function getCurAbbreviation()
+    {
+        return $this->curAbbreviation;
     }
 }

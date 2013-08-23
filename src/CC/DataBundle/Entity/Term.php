@@ -12,18 +12,12 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class Term
 {
-    /**
-     * @var integer
-     *
-     * @ORM\Column(name="id", type="integer")
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="AUTO")
-     */
-    private $id;
 
     /**
      * @var integer
      *
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="NONE")
      * @ORM\Column(name="year", type="integer")
      */
     private $year;
@@ -31,6 +25,8 @@ class Term
     /**
      * @var string
      *
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="NONE")
      * @ORM\Column(name="quarter", type="string", length=255)
      */
     private $quarter;

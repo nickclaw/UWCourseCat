@@ -13,17 +13,10 @@ use Doctrine\ORM\Mapping as ORM;
 class Curriculum
 {
     /**
-     * @var integer
-     *
-     * @ORM\Column(name="id", type="integer")
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="AUTO")
-     */
-    private $id;
-
-    /**
      * @var string
      *
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="NONE")
      * @ORM\Column(name="abbreviation", type="string", length=255)
      */
     private $abbreviation;
@@ -44,7 +37,7 @@ class Curriculum
 
     /**
      * @ORM\ManyToOne(targetEntity="College", inversedBy="curricula")
-     * @ORM\JoinColumn(name="college_id", referencedColumnName="id", onDelete="CASCADE")
+     * @ORM\JoinColumn(name="college_abbr", referencedColumnName="abbreviation", onDelete="CASCADE")
      **/
     private $college;
 

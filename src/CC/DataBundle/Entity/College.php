@@ -12,19 +12,13 @@ use Doctrine\ORM\Mapping as ORM;
  */
 class College
 {
-    /**
-     * @var integer
-     *
-     * @ORM\Column(name="id", type="integer")
-     * @ORM\Id
-     * @ORM\GeneratedValue(strategy="AUTO")
-     */
-    private $id;
 
     /**
      * @var string
      *
-     * @ORM\Column(name="abbreviation", type="string", length=6)
+     * @ORM\Column(name="abbreviation", type="string", length=7)
+     * @ORM\Id
+     * @ORM\GeneratedValue(strategy="NONE")
      */
     private $abbreviation;
 
@@ -51,7 +45,7 @@ class College
 
     /**
      * @ORM\ManyToOne(targetEntity="Campus", inversedBy="colleges")
-     * @ORM\JoinColumn(name="campus_id", referencedColumnName="id", onDelete="CASCADE")
+     * @ORM\JoinColumn(name="campus_name", referencedColumnName="shortName", onDelete="CASCADE")
      **/
     private $campus;
 
@@ -59,17 +53,6 @@ class College
      * @ORM\OneToMany(targetEntity="Curriculum", mappedBy="college")
      **/
     private $curricula;
-
-
-    /**
-     * Get id
-     *
-     * @return integer 
-     */
-    public function getId()
-    {
-        return $this->id;
-    }
 
     /**
      * Set abbreviation
