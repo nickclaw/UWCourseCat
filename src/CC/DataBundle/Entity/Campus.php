@@ -40,7 +40,7 @@ class Campus
      * @ORM\JoinColumns({
      *      @ORM\JoinColumn(name="term_year", referencedColumnName="year", onDelete="CASCADE"),
      *      @ORM\JoinColumn(name="term_quarter", referencedColumnName="quarter", onDelete="CASCADE")
-     * });
+     * })
      **/
     private $term;
 

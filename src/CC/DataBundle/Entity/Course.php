@@ -51,6 +51,11 @@ class Course
     private $curriculum;
 
     /**
+     * @ORM\OneToMany(targetEntity="Section", mappedBy="course")
+     **/
+    private $sections;
+
+    /**
      * @var string
      *
      * @ORM\Column(name="description", type="text", nullable=true)
@@ -388,5 +393,45 @@ class Course
     public function getCurAbbreviation()
     {
         return $this->curAbbreviation;
+    }
+    /**
+     * Constructor
+     */
+    public function __construct()
+    {
+        $this->sections = new \Doctrine\Common\Collections\ArrayCollection();
+    }
+    
+    /**
+     * Add sections
+     *
+     * @param \CC\DataBundle\Entity\Section $sections
+     * @return Course
+     */
+    public function addSection(\CC\DataBundle\Entity\Section $sections)
+    {
+        $this->sections[] = $sections;
+    
+        return $this;
+    }
+
+    /**
+     * Remove sections
+     *
+     * @param \CC\DataBundle\Entity\Section $sections
+     */
+    public function removeSection(\CC\DataBundle\Entity\Section $sections)
+    {
+        $this->sections->removeElement($sections);
+    }
+
+    /**
+     * Get sections
+     *
+     * @return \Doctrine\Common\Collections\Collection 
+     */
+    public function getSections()
+    {
+        return $this->sections;
     }
 }

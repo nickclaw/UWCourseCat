@@ -13,6 +13,7 @@ use CC\DataBundle\Entity\Campus;
 use CC\DataBundle\Entity\College;
 use CC\DataBundle\Entity\Curriculum;
 use CC\DataBundle\Entity\Course;
+use CC\DataBundle\Entity\Section;
 
 class GetCommand extends ContainerAwareCommand
 {
@@ -165,21 +166,27 @@ class GetCommand extends ContainerAwareCommand
     }
 
     private function getCourses($year, $quarter, $em, $parents) {
+        // get all curriculum if they don't already exist
         if (!$parents) {
             $repo = $em->getRepository('CCDataBundle:Curriculum');
             $parents = $repo->findBy(array());
         }
 
         $courses = [];
+        // for each curricula
         foreach($parents as $curriculum) {
+
+            // get all courses
             $url = 'https://ws.admin.washington.edu/student/v4/public/course.json'.
                 '?year='.$year.
                 '&quarter='.$quarter.
                 '&future_terms=0'.
                 '&curriculum_abbreviation='.rawurlencode($curriculum->getAbbreviation()).
-                '&page_size=400';
+                '&page_size=500';
             $data = $this->getJsonObject($url);
-            $courseChunks = array_chunk($data->Courses, 20);
+
+            // then split each 
+            $courseChunks = array_chunk($data->Courses, 100);
             foreach($courseChunks as $courseChunk) {
                 $urlArray = [];
                 foreach($courseChunk as $chunk) {
@@ -212,10 +219,62 @@ class GetCommand extends ContainerAwareCommand
             }
             $em->flush();
         }
+        return $courses;
     }
 
     private function getSections($year, $quarter, $em, $parents) {
-        echo "section\n";
+        if(!$parents) {
+            $repo = $em->getRepository('CCDataBundle:Course');
+            $parents = $repo->findBy(array());
+        }
+
+        $repo = $em->getRepository('CCDataBundle:Curriculum');
+        $curricula = $repo->findBy(array());
+        $curriculaChunk = array_chunk($curricula, 100);
+
+        $sectionUrls = [];
+        foreach ($curriculaChunk as $curriculaChunk) {
+            $chunkUrls = [];
+            foreach($curriculaChunk as $curriculum) {
+                $url = 'https://ws.admin.washington.edu/student/v4/public/section.json'.
+                '?year='.$year.
+                '&quarter='.$quarter.
+                '&curriculum_abbreviation='.urlencode($curriculum->getAbbreviation());
+                $chunkUrls[] = $url;
+            }
+            $datas = $this->getJsonObjects($chunkUrls);
+            foreach($datas as $sectionResults) {
+                foreach($sectionResults->Sections as $entry) {
+                    if (strlen($entry->SectionID) === 1){
+                        $sectionUrls[] = 'https://ws.admin.washington.edu'.$entry->Href;
+                    }
+                }
+            }
+        }
+
+        $sectionChunks = array_chunk($sectionUrls, 100);
+
+        foreach($sectionChunks as $sectionChunk) {
+            $datass = $this->getJsonObjects($sectionChunk);
+
+            foreach($datass as $section) {
+                $crs = $this->findInArray($section->Course->CurriculumAbbreviation, $section->Course->CourseNumber, $parents);
+                $sec = new Section();
+                $sec->setSln($section->SLN)
+                    ->setSectionID($section->SectionID)
+                    ->setCourse($crs);
+                $em->merge($sec);
+            }
+            $em->flush();
+        }
+    }
+
+    function findInArray($abbr, $number, $haystack) {
+        foreach($haystack as $needle) {
+            if ($needle->getCurAbbreviation() === $abbr && $needle->getNumber() === $number) {
+                return $needle;
+            }
+        }
     }
 
     private function getJsonObject($url, $returnHandle = false) {
@@ -245,7 +304,7 @@ class GetCommand extends ContainerAwareCommand
 
         $running = null;
         do {
-            usleep(20000);
+            usleep(10000);
             $mrc = curl_multi_exec($mHandle, $running);
         } while($running > 0);
 
